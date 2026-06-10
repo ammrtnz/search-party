@@ -1,4 +1,4 @@
-# Wendish 🧩
+# Search Party 🔎
 
 A cozy word-path puzzle, inspired by LinkedIn's Wend. 90 levels.
 

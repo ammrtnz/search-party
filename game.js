@@ -1,8 +1,8 @@
-/* Wendish — game logic. Vanilla JS, no build step. */
+/* Search Party — game logic. Vanilla JS, no build step. */
 (() => {
   "use strict";
 
-  const STORE_KEY = "wendish-v1";
+  const STORE_KEY = "search-party-v1";
   const WORD_EMOJI = ["🟦", "🟧", "🟩", "🟪"]; // by word index (3,4,5,6 letters)
 
   const $ = (id) => document.getElementById(id);
@@ -313,7 +313,7 @@
   function shareText() {
     const url = location.origin + location.pathname + `#l${level + 1}`;
     const st = lastRun || progress.solved[level];
-    return `Wendish #${level + 1} 🧩\n⏱ ${fmtTime(st.time)} · 💡 ${st.hints} hints\n${emojiMap()}\n${url}`;
+    return `Search Party #${level + 1} 🔎\n⏱ ${fmtTime(st.time)} · 💡 ${st.hints} hints\n${emojiMap()}\n${url}`;
   }
 
   $("btn-share").addEventListener("click", async () => {
