@@ -136,6 +136,13 @@ main { width: 100%; max-width: 480px; padding: 8px 18px 40px; }
 .tile.locked.w1 { background: var(--w1); }
 .tile.locked.w2 { background: var(--w2); }
 .tile.locked.w3 { background: var(--w3); }
+/* scratch highlights: free-form candidate marks, never judged or slotted */
+.tile.scratch {
+  background: color-mix(in srgb, var(--trace) 45%, var(--tile));
+  border-style: dotted;
+  border-color: var(--muted);
+  cursor: pointer;
+}
 /* tentative placements: tinted, removable, no correctness implied */
 .tile.placed { cursor: pointer; border-style: solid; }
 .tile.placed.w0 { background: color-mix(in srgb, var(--w0) 38%, var(--tile)); border-color: var(--w0); }

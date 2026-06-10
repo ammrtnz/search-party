@@ -7,7 +7,9 @@ Trace each word through adjacent tiles (up/down/left/right). Every tile is used
 exactly once, and words never share tiles. Drag to trace (or tap tile by tile,
 then hit ✓ Place). Placed words aren't checked — the puzzle only judges itself
 once the whole grid is filled, so you can piece it together and rearrange freely:
-tap a placed word to take it back. The labeled rows show which lengths you've
+tap a placed word to take it back. Traces with no open slot (say, a second
+3-letter word) stay on the board as yellow scratch marks — thinking aids that
+are never judged; tap one to erase it, or hit ✕ Clear to wipe them all. The labeled rows show which lengths you've
 covered, and if your placements leave the open tiles geometrically unable to fit
 the remaining words, a warning says so — that's tile-counting, not an answer key. Stuck? The 💡 Hint button reveals the next
 letter of the shortest unsolved word.

@@ -23,6 +23,7 @@
   let level = -1;            // 0-based puzzle index
   let puzzle = null;
   let placements = [];       // wi -> traced path (tentative, unchecked) or null
+  let scratches = [];        // free-form candidate highlights (cell arrays), never judged
   let lockedWords = [];      // word indices confirmed (hints or win)
   let lockedCells = {};      // cellIdx -> word index (locked only)
   let path = [];             // current trace (cell indices)
@@ -78,6 +79,7 @@
     level = idx;
     puzzle = PUZZLES[idx];
     placements = [null, null, null, null];
+    scratches = [];
     lockedWords = [];
     lockedCells = {};
     path = [];
@@ -148,12 +150,13 @@
     for (const t of tiles) {
       const i = +t.dataset.idx;
       t.classList.toggle("tracing", path.includes(i));
-      t.classList.remove("locked", "placed", "w0", "w1", "w2", "w3", "hinted");
+      t.classList.remove("locked", "placed", "scratch", "w0", "w1", "w2", "w3", "hinted");
       t.removeAttribute("data-hint");
       if (i in lockedCells) t.classList.add("locked", `w${lockedCells[i]}`);
       else {
         const owner = placedCellOwner(i);
         if (owner !== -1) t.classList.add("placed", `w${owner}`);
+        else if (!path.includes(i) && scratches.some((s) => s.includes(i))) t.classList.add("scratch");
       }
     }
     // hint markers: dashed outline + position number on revealed-but-unlocked tiles
@@ -307,19 +310,16 @@
     if (finished || path.length === 0) return;
     const L = path.length;
     const wi = L - 3;
-    if (L < 3 || L > 6) {
-      $("msg").textContent = "Words are 3 to 6 letters long";
-      path = [];
-      refreshTiles();
-      return;
-    }
-    if (lockedWords.includes(wi) || placements[wi]) {
-      $("msg").textContent = `You already have a ${L}-letter word — tap it to remove it`;
+    if (L < 3 || L > 6 || lockedWords.includes(wi) || placements[wi]) {
+      // no open slot for this length: keep it as a scratch highlight —
+      // a thinking aid on the board, never judged, never slotted
+      scratches.push(path);
       path = [];
       refreshTiles();
       return;
     }
     placements[wi] = path;
+    scratches = scratches.filter((s) => !s.some((c) => path.includes(c)));
     path = [];
     $("msg").textContent = "";
     renderSlots();
@@ -373,6 +373,7 @@
       if (owner !== -1) placements[owner] = null;
     }
     path = path.filter((c) => !(c in lockedCells));
+    scratches = scratches.filter((s) => !s.some((c) => c in lockedCells));
     renderSlots();
     refreshTiles();
     updateFitWarning();
@@ -390,6 +391,10 @@
     // tapping a placed word removes it
     const owner = placedCellOwner(downTile);
     if (owner !== -1) { removePlacement(owner); return; }
+    // starting on a scratch wipes it and begins a fresh trace
+    if (scratches.some((s) => s.includes(downTile))) {
+      scratches = scratches.filter((s) => !s.includes(downTile));
+    }
     if (path.length && isFree(downTile) && !path.includes(downTile) &&
         !adjacent(path[path.length - 1], downTile)) {
       path = []; // starting somewhere unreachable begins a new trace
@@ -420,6 +425,7 @@
   });
   $("btn-clear").addEventListener("click", () => {
     path = [];
+    scratches = [];
     $("msg").textContent = "";
     refreshTiles();
   });
