@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Wendish — a word-path puzzle</title>
+  <meta name="description" content="Trace the four hidden words through the grid. Every tile used exactly once.">
+  <meta property="og:title" content="Wendish">
+  <meta property="og:description" content="A cozy word-path puzzle. 90 levels.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🧩</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <button id="btn-home" class="icon-btn" title="All levels" hidden>‹</button>
+    <h1 id="title">Wendish</h1>
+    <span id="level-tag" hidden></span>
+  </header>
+
+  <!-- Level select -->
+  <main id="screen-levels">
+    <p class="tagline">Trace the four hidden words. Every tile, exactly once.</p>
+    <div id="level-grid"></div>
+  </main>
+
+  <!-- Game -->
+  <main id="screen-game" hidden>
+    <div id="board"></div>
+    <div id="slots"></div>
+    <div id="toolbar">
+      <button id="btn-hint" class="tool-btn">💡 Hint</button>
+      <button id="btn-undo" class="tool-btn">↩︎ Undo</button>
+      <button id="btn-clear" class="tool-btn">✕ Clear</button>
+    </div>
+    <div id="msg" aria-live="polite"></div>
+  </main>
+
+  <!-- Win overlay -->
+  <div id="overlay" hidden>
+    <div id="win-card">
+      <h2>Solved! 🎉</h2>
+      <p id="win-stats"></p>
+      <pre id="win-emoji"></pre>
+      <div class="win-actions">
+        <button id="btn-share" class="primary">Share</button>
+        <button id="btn-next">Next level ›</button>
+      </div>
+      <button id="btn-levels" class="linkish">All levels</button>
+    </div>
+  </div>
+
+  <script src="puzzles.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
