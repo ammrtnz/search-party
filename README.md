@@ -4,8 +4,11 @@ A cozy word-path puzzle. 90 levels.
 
 **How to play:** Four words are hidden in the grid — 3, 4, 5, and 6 letters long.
 Trace each word through adjacent tiles (up/down/left/right). Every tile is used
-exactly once, and words never share tiles. Drag to trace, or tap tile by tile.
-Stuck? The 💡 Hint button reveals the next letter of the shortest unsolved word.
+exactly once, and words never share tiles. Drag to trace (or tap tile by tile,
+then hit ✓ Place). Placed words aren't checked — the puzzle only judges itself
+once the whole grid is filled, so you can piece it together and rearrange freely:
+tap a placed word to take it back. Stuck? The 💡 Hint button reveals the next
+letter of the shortest unsolved word.
 
 ## Development
 

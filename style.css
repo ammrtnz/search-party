@@ -136,6 +136,12 @@ main { width: 100%; max-width: 480px; padding: 8px 18px 40px; }
 .tile.locked.w1 { background: var(--w1); }
 .tile.locked.w2 { background: var(--w2); }
 .tile.locked.w3 { background: var(--w3); }
+/* tentative placements: tinted, removable, no correctness implied */
+.tile.placed { cursor: pointer; border-style: solid; }
+.tile.placed.w0 { background: color-mix(in srgb, var(--w0) 38%, var(--tile)); border-color: var(--w0); }
+.tile.placed.w1 { background: color-mix(in srgb, var(--w1) 38%, var(--tile)); border-color: var(--w1); }
+.tile.placed.w2 { background: color-mix(in srgb, var(--w2) 38%, var(--tile)); border-color: var(--w2); }
+.tile.placed.w3 { background: color-mix(in srgb, var(--w3) 38%, var(--tile)); border-color: var(--w3); }
 .tile.hinted::after {
   content: attr(data-hint);
   position: absolute;
@@ -173,6 +179,11 @@ main { width: 100%; max-width: 480px; padding: 8px 18px 40px; }
 .slot-row.done.w2 .slot-cell { background: var(--w2); }
 .slot-row.done.w3 .slot-cell { background: var(--w3); }
 .slot-cell.revealed { color: var(--accent); border-color: var(--accent); border-style: dashed; }
+.slot-row.filled { cursor: pointer; }
+.slot-row.filled.w0 .slot-cell { border-color: var(--w0); }
+.slot-row.filled.w1 .slot-cell { border-color: var(--w1); }
+.slot-row.filled.w2 .slot-cell { border-color: var(--w2); }
+.slot-row.filled.w3 .slot-cell { border-color: var(--w3); }
 
 /* ----- toolbar ----- */
 #toolbar { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }

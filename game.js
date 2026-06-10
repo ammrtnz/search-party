@@ -19,14 +19,24 @@
   let progress = loadProgress();
 
   // ---------- state ----------
-  let level = -1;          // 0-based puzzle index
+  // words[wi] has length wi+3; placements/locks are aligned with that index.
+  let level = -1;            // 0-based puzzle index
   let puzzle = null;
-  let solvedWords = [];    // word indices found
-  let lockedCells = {};    // cellIdx -> word index
-  let path = [];           // current trace (cell indices)
+  let placements = [];       // wi -> traced path (tentative, unchecked) or null
+  let lockedWords = [];      // word indices confirmed (hints or win)
+  let lockedCells = {};      // cellIdx -> word index (locked only)
+  let path = [];             // current trace (cell indices)
   let hints = [0, 0, 0, 0];
   let startTime = 0;
   let finished = false;
+  let lastRun = null;
+
+  const placedCellOwner = (i) => {
+    for (let wi = 0; wi < placements.length; wi++) {
+      if (placements[wi] && placements[wi].includes(i)) return wi;
+    }
+    return -1;
+  };
 
   // ---------- routing ----------
   function go(hash) { location.hash = hash; }
@@ -67,7 +77,8 @@
   function openLevel(idx) {
     level = idx;
     puzzle = PUZZLES[idx];
-    solvedWords = [];
+    placements = [null, null, null, null];
+    lockedWords = [];
     lockedCells = {};
     path = [];
     hints = [0, 0, 0, 0];
@@ -106,14 +117,22 @@
     slots.innerHTML = "";
     puzzle.words.forEach((w, wi) => {
       const row = document.createElement("div");
-      row.className = `slot-row w${wi}` + (solvedWords.includes(wi) ? " done" : "");
+      const placed = placements[wi];
+      row.className = `slot-row w${wi}`
+        + (lockedWords.includes(wi) ? " done" : "")
+        + (placed ? " filled" : "");
       row.dataset.word = wi;
       for (let k = 0; k < w.word.length; k++) {
         const c = document.createElement("div");
         c.className = "slot-cell";
-        if (solvedWords.includes(wi)) c.textContent = w.word[k];
+        if (lockedWords.includes(wi)) c.textContent = w.word[k];
+        else if (placed) c.textContent = puzzle.grid[placed[k]];
         else if (k < hints[wi]) { c.textContent = w.word[k]; c.classList.add("revealed"); }
         row.appendChild(c);
+      }
+      // tapping a tentative row removes that placement
+      if (placed && !lockedWords.includes(wi)) {
+        row.addEventListener("click", () => removePlacement(wi));
       }
       slots.appendChild(row);
     });
@@ -124,13 +143,17 @@
     for (const t of tiles) {
       const i = +t.dataset.idx;
       t.classList.toggle("tracing", path.includes(i));
-      t.classList.remove("locked", "w0", "w1", "w2", "w3", "hinted");
+      t.classList.remove("locked", "placed", "w0", "w1", "w2", "w3", "hinted");
       t.removeAttribute("data-hint");
       if (i in lockedCells) t.classList.add("locked", `w${lockedCells[i]}`);
+      else {
+        const owner = placedCellOwner(i);
+        if (owner !== -1) t.classList.add("placed", `w${owner}`);
+      }
     }
-    // hint markers: dashed outline + position number on revealed-but-unsolved tiles
+    // hint markers: dashed outline + position number on revealed-but-unlocked tiles
     puzzle.words.forEach((w, wi) => {
-      if (solvedWords.includes(wi)) return;
+      if (lockedWords.includes(wi)) return;
       for (let k = 0; k < hints[wi]; k++) {
         const t = tiles[w.path[k]];
         t.classList.add("hinted");
@@ -151,12 +174,16 @@
     if (!tile || tile.classList.contains("blocked")) return -1;
     return +tile.dataset.idx;
   }
-  const isFree = (i) => i >= 0 && !(i in lockedCells);
+  const isFree = (i) => i >= 0 && !(i in lockedCells) && placedCellOwner(i) === -1;
   function adjacent(a, b) {
     const ar = Math.floor(a / puzzle.cols), ac = a % puzzle.cols;
     const br = Math.floor(b / puzzle.cols), bc = b % puzzle.cols;
     return Math.abs(ar - br) + Math.abs(ac - bc) === 1;
   }
+  const openLengths = () =>
+    puzzle.words
+      .map((w, wi) => (lockedWords.includes(wi) || placements[wi] ? 0 : w.word.length))
+      .filter(Boolean);
 
   function extend(i) {
     if (!isFree(i) || finished) return;
@@ -166,39 +193,87 @@
       if (pos < path.length - 1) { path = path.slice(0, pos + 1); refreshTiles(); }
       return;
     }
+    const lens = openLengths();
+    if (lens.length && path.length >= Math.max(...lens)) return; // longer than any open word
     if (path.length === 0 || adjacent(path[path.length - 1], i)) {
       path.push(i);
       refreshTiles();
-      if (!checkAutoSolve()) {
-        // no possible word left at this length: reject immediately
-        const lens = puzzle.words
-          .filter((_, wi) => !solvedWords.includes(wi))
-          .map((w) => w.word.length);
-        if (path.length >= Math.max(...lens)) rejectTrace(true);
-      }
     }
   }
 
-  function checkAutoSolve() {
-    for (let wi = 0; wi < puzzle.words.length; wi++) {
-      if (solvedWords.includes(wi)) continue;
-      const p = puzzle.words[wi].path;
-      if (p.length !== path.length) continue;
-      const fwd = p.every((c, k) => c === path[k]);
-      const rev = p.every((c, k) => c === path[path.length - 1 - k]);
-      if (fwd || rev) { lockWord(wi); return true; }
+  // commit the current trace as a tentative placement — no correctness feedback
+  function placeCurrentPath() {
+    if (finished || path.length === 0) return;
+    const L = path.length;
+    const wi = L - 3;
+    if (L < 3 || L > 6) {
+      $("msg").textContent = "Words are 3 to 6 letters long";
+      path = [];
+      refreshTiles();
+      return;
     }
-    return false;
-  }
-
-  function lockWord(wi) {
-    solvedWords.push(wi);
-    for (const c of puzzle.words[wi].path) lockedCells[c] = wi;
+    if (lockedWords.includes(wi) || placements[wi]) {
+      $("msg").textContent = `You already have a ${L}-letter word — tap it to remove it`;
+      path = [];
+      refreshTiles();
+      return;
+    }
+    placements[wi] = path;
     path = [];
+    $("msg").textContent = "";
     renderSlots();
     refreshTiles();
+    maybeEvaluate();
+  }
+
+  function removePlacement(wi) {
+    if (finished || !placements[wi]) return;
+    placements[wi] = null;
     $("msg").textContent = "";
-    if (solvedWords.length === puzzle.words.length) win();
+    renderSlots();
+    refreshTiles();
+  }
+
+  // only when every word is down does the puzzle judge itself
+  function maybeEvaluate() {
+    for (let wi = 0; wi < puzzle.words.length; wi++) {
+      if (!lockedWords.includes(wi) && !placements[wi]) return;
+    }
+    const allCorrect = puzzle.words.every((w, wi) => {
+      if (lockedWords.includes(wi)) return true;
+      const p = placements[wi];
+      const fwd = w.path.every((c, k) => c === p[k]);
+      const rev = w.path.every((c, k) => c === p[p.length - 1 - k]);
+      return fwd || rev;
+    });
+    if (allCorrect) {
+      puzzle.words.forEach((w, wi) => {
+        if (!lockedWords.includes(wi)) lockWord(wi, false);
+      });
+      win();
+    } else {
+      const b = $("board");
+      b.classList.remove("shake");
+      void b.offsetWidth; // restart animation
+      b.classList.add("shake");
+      $("msg").textContent = "The grid is full, but it isn't solved — tap a word to rearrange";
+    }
+  }
+
+  function lockWord(wi, evaluate = true) {
+    lockedWords.push(wi);
+    placements[wi] = null;
+    for (const c of puzzle.words[wi].path) {
+      lockedCells[c] = wi;
+      // evict any tentative placement that sits on the locked word's tiles
+      const owner = placedCellOwner(c);
+      if (owner !== -1) placements[owner] = null;
+    }
+    path = path.filter((c) => !(c in lockedCells));
+    renderSlots();
+    refreshTiles();
+    if (lockedWords.length === puzzle.words.length) { win(); return; }
+    if (evaluate) maybeEvaluate();
   }
 
   board.addEventListener("pointerdown", (e) => {
@@ -208,6 +283,9 @@
     movedToOtherTile = false;
     downTile = tileFromEvent(e);
     if (downTile === -1) return;
+    // tapping a placed word removes it
+    const owner = placedCellOwner(downTile);
+    if (owner !== -1) { removePlacement(owner); return; }
     if (path.length && isFree(downTile) && !path.includes(downTile) &&
         !adjacent(path[path.length - 1], downTile)) {
       path = []; // starting somewhere unreachable begins a new trace
@@ -226,22 +304,12 @@
     if (!pointerActive) return;
     pointerActive = false;
     if (finished || path.length === 0) return;
-    // a drag across tiles submits; a single tap keeps building
-    if (movedToOtherTile && !checkAutoSolve()) rejectTrace(true);
+    // a drag across tiles places the word; taps keep building until Place
+    if (movedToOtherTile) placeCurrentPath();
   });
 
-  function rejectTrace(fullLength) {
-    if (!fullLength) return; // shorter than any remaining word: keep building
-    const b = $("board");
-    b.classList.remove("shake");
-    void b.offsetWidth; // restart animation
-    b.classList.add("shake");
-    $("msg").textContent = "Not quite — try another path";
-    path = [];
-    refreshTiles();
-  }
-
   // ---------- controls ----------
+  $("btn-place").addEventListener("click", placeCurrentPath);
   $("btn-undo").addEventListener("click", () => {
     path.pop();
     refreshTiles();
@@ -253,9 +321,12 @@
   });
   $("btn-hint").addEventListener("click", () => {
     if (finished) return;
-    // reveal the next letter of the shortest unsolved word
-    const wi = puzzle.words.findIndex((w, k) => !solvedWords.includes(k));
+    // reveal the next letter of the shortest word that isn't locked,
+    // preferring one you haven't placed yet
+    let wi = puzzle.words.findIndex((w, k) => !lockedWords.includes(k) && !placements[k]);
+    if (wi === -1) wi = puzzle.words.findIndex((w, k) => !lockedWords.includes(k));
     if (wi === -1) return;
+    if (placements[wi]) placements[wi] = null; // make room to show the reveal
     hints[wi] = Math.min(hints[wi] + 1, puzzle.words[wi].word.length);
     if (hints[wi] === puzzle.words[wi].word.length) {
       lockWord(wi);
@@ -293,9 +364,8 @@
     return out.trimEnd();
   }
 
-  let lastRun = null;
-
   function win() {
+    if (finished) return;
     finished = true;
     const elapsed = Date.now() - startTime;
     const h = totalHints();
