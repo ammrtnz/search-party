@@ -162,7 +162,25 @@ main { width: 100%; max-width: 480px; padding: 8px 18px 40px; }
 
 /* ----- slots ----- */
 #slots { display: flex; flex-direction: column; gap: 8px; align-items: center; }
-.slot-row { display: flex; gap: 5px; }
+.slot-row { display: flex; gap: 5px; align-items: center; }
+.slot-label {
+  width: 16px;
+  text-align: right;
+  margin-right: 4px;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+#fit-warn {
+  text-align: center;
+  color: #c0392b;
+  font-weight: 600;
+  font-size: .9rem;
+  margin-top: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  #fit-warn { color: #e07a6a; }
+}
 .slot-cell {
   width: 30px; height: 34px;
   border-radius: 7px;

@@ -95,6 +95,7 @@
 
     renderBoard();
     renderSlots();
+    $("fit-warn").hidden = true;
   }
 
   function renderBoard() {
@@ -122,6 +123,10 @@
         + (lockedWords.includes(wi) ? " done" : "")
         + (placed ? " filled" : "");
       row.dataset.word = wi;
+      const label = document.createElement("span");
+      label.className = "slot-label";
+      label.textContent = w.word.length;
+      row.appendChild(label);
       for (let k = 0; k < w.word.length; k++) {
         const c = document.createElement("div");
         c.className = "slot-cell";
@@ -160,6 +165,102 @@
         t.setAttribute("data-hint", `${w.word.length}·${k + 1}`);
       }
     });
+  }
+
+  // ---------- geometric feasibility (letter-blind, leaks no answers) ----------
+  // Can the currently free tiles be partitioned into paths of the remaining
+  // lengths at all? Pure geometry — says nothing about whether words are right.
+  function neighborsOf(i) {
+    const out = [];
+    const r = Math.floor(i / puzzle.cols), c = i % puzzle.cols;
+    if (r > 0) out.push(i - puzzle.cols);
+    if (r < puzzle.rows - 1) out.push(i + puzzle.cols);
+    if (c > 0) out.push(i - 1);
+    if (c < puzzle.cols - 1) out.push(i + 1);
+    return out.filter((n) => !puzzle.blocked.includes(n));
+  }
+
+  function regionsOk(free, lengths) {
+    let sums = new Set([0]);
+    for (const L of lengths) {
+      const next = new Set(sums);
+      for (const s of sums) next.add(s + L);
+      sums = next;
+    }
+    const seen = new Set();
+    for (const start of free) {
+      if (seen.has(start)) continue;
+      let size = 0;
+      const stack = [start];
+      seen.add(start);
+      while (stack.length) {
+        const cur = stack.pop();
+        size++;
+        for (const n of neighborsOf(cur)) {
+          if (free.has(n) && !seen.has(n)) { seen.add(n); stack.push(n); }
+        }
+      }
+      if (!sums.has(size)) return false;
+    }
+    return true;
+  }
+
+  function canTile(free, lengths) {
+    if (lengths.length === 0) return free.size === 0;
+    if (!regionsOk(free, lengths)) return false;
+    const anchor = Math.min(...free);
+    // try every remaining length as a path through the anchor cell
+    for (const L of new Set(lengths)) {
+      const rest = lengths.slice();
+      rest.splice(rest.indexOf(L), 1);
+      let ok = false;
+      const tryPath = (leftArm, rightArm) => {
+        if (ok) return;
+        if (leftArm.length + 1 + rightArm.length === L) {
+          const used = [...leftArm, anchor, ...rightArm];
+          for (const c of used) free.delete(c);
+          if (canTile(free, rest)) ok = true;
+          for (const c of used) free.add(c);
+          return;
+        }
+        const tip = rightArm.length ? rightArm[rightArm.length - 1] : anchor;
+        for (const n of neighborsOf(tip)) {
+          if (free.has(n) && n !== anchor && !leftArm.includes(n) && !rightArm.includes(n)) {
+            rightArm.push(n);
+            tryPath(leftArm, rightArm);
+            rightArm.pop();
+            if (ok) return;
+          }
+        }
+      };
+      const growLeft = (leftArm, target) => {
+        if (ok) return;
+        if (leftArm.length === target) { tryPath(leftArm, []); return; }
+        const tip = leftArm.length ? leftArm[leftArm.length - 1] : anchor;
+        for (const n of neighborsOf(tip)) {
+          if (free.has(n) && n !== anchor && !leftArm.includes(n)) {
+            leftArm.push(n);
+            growLeft(leftArm, target);
+            leftArm.pop();
+            if (ok) return;
+          }
+        }
+      };
+      for (let l = 0; l < L && !ok; l++) growLeft([], l);
+      if (ok) return true;
+    }
+    return false;
+  }
+
+  function updateFitWarning() {
+    const lengths = puzzle.words
+      .map((w, wi) => (lockedWords.includes(wi) || placements[wi] ? 0 : w.word.length))
+      .filter(Boolean);
+    const free = new Set();
+    for (let i = 0; i < puzzle.rows * puzzle.cols; i++) {
+      if (!puzzle.blocked.includes(i) && isFree(i)) free.add(i);
+    }
+    $("fit-warn").hidden = lengths.length === 0 || canTile(free, lengths);
   }
 
   // ---------- tracing ----------
@@ -223,6 +324,7 @@
     $("msg").textContent = "";
     renderSlots();
     refreshTiles();
+    updateFitWarning();
     maybeEvaluate();
   }
 
@@ -232,6 +334,7 @@
     $("msg").textContent = "";
     renderSlots();
     refreshTiles();
+    updateFitWarning();
   }
 
   // only when every word is down does the puzzle judge itself
@@ -272,6 +375,7 @@
     path = path.filter((c) => !(c in lockedCells));
     renderSlots();
     refreshTiles();
+    updateFitWarning();
     if (lockedWords.length === puzzle.words.length) { win(); return; }
     if (evaluate) maybeEvaluate();
   }
