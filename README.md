@@ -1,6 +1,6 @@
 # Search Party 🔎
 
-A cozy word-path puzzle, inspired by LinkedIn's Wend. 90 levels.
+A cozy word-path puzzle. 90 levels.
 
 **How to play:** Four words are hidden in the grid — 3, 4, 5, and 6 letters long.
 Trace each word through adjacent tiles (up/down/left/right). Every tile is used

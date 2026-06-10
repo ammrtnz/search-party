@@ -1,4 +1,4 @@
-// Wendish puzzle generator.
+// Search Party puzzle generator.
 // Packs 4 words (lengths 3,4,5,6) as orthogonal self-avoiding paths that
 // exactly tile an 18-cell grid mask, then verifies the tiling is the ONLY
 // way to partition the grid into 4 dictionary words.
